@@ -34,7 +34,7 @@ impl Default for AnalyzerConfig {
             connection_redirect_2g_downgrade: true,
             lte_sib6_and_7_downgrade: true,
             null_cipher: true,
-            imsi_exposed: false,
+            imsi_exposed: true,
             nas_null_cipher: true,
             incomplete_sib: true,
         }
