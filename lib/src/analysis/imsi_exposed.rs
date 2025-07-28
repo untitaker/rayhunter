@@ -80,6 +80,10 @@ impl Analyzer for ImsiExposedAnalyzer {
         "IMSI-Exposed Message Detector".into()
     }
 
+    fn get_version(&self) -> u32 {
+        1
+    }
+
     fn get_description(&self) -> Cow<str> {
         "Catches any and all messages that may expose IMSI. Can be quite noisy. \
         Based on the detection logic from the Marlin paper (\"They Know Where You Are: Tracking Mobile \
