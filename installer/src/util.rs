@@ -37,7 +37,9 @@ pub async fn telnet_send_command(
     writer.write_all(command.as_bytes()).await?;
     writer.write_all(b"; echo exit code $?\r\n").await?;
     let mut read_buf = Vec::new();
-    let _ = timeout(Duration::from_secs(5), async {
+    // bump timeout here since file transfers via nc can take longer. for some reason, file
+    // transfers started taking longer since we started using the single-threaded runtime
+    let _ = timeout(Duration::from_secs(30), async {
         let mut buf = [0; 4096];
         loop {
             let Ok(bytes_read) = reader.read(&mut buf).await else {
