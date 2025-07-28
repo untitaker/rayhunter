@@ -28,7 +28,7 @@ impl Default for Config {
             device: Device::Orbic,
             ui_level: 1,
             colorblind_mode: false,
-            key_input_mode: 0,
+            key_input_mode: 1,
             analyzers: AnalyzerConfig::default(),
         }
     }
