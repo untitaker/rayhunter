@@ -214,7 +214,9 @@ async fn run() -> Result<(), Error> {
     Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
+// we use multithreaded runtime here (unlike upstream) because otherwise it seems tplink may
+// timeout sending files
+#[tokio::main]
 async fn main() {
     if let Err(e) = run().await {
         eprintln!("{e:?}");
