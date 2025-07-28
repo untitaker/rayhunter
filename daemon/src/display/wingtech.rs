@@ -22,7 +22,6 @@ struct Framebuffer;
 impl GenericFramebuffer for Framebuffer {
     fn dimensions(&self) -> Dimensions {
         Dimensions {
-            height: 128,
             width: 160,
         }
     }

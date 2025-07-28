@@ -30,7 +30,6 @@ impl GenericFramebuffer for Framebuffer {
     fn dimensions(&self) -> Dimensions {
         // TODO actually poll for this, maybe w/ fbset?
         Dimensions {
-            height: 128,
             width: 128,
         }
     }
