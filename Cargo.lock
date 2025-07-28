@@ -1489,7 +1489,7 @@ dependencies = [
 
 [[package]]
 name = "installer"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "adb_client",
  "aes",
@@ -1502,7 +1502,8 @@ dependencies = [
  "env_logger 0.11.8",
  "hyper",
  "hyper-util",
- "md5",
+ "md5 0.7.0",
+ "md5crypt",
  "nusb",
  "reqwest",
  "serde",
@@ -1745,6 +1746,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
+name = "md5"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae960838283323069879657ca3de837e9f7bbb4c7bf6ea7f1b290d5e9476d2e0"
+
+[[package]]
+name = "md5crypt"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c8db1a978f99f584f2e72601860f68bb2cea9c09f4408f5e83f805db3434fb0"
+dependencies = [
+ "md5 0.8.0",
+]
+
+[[package]]
 name = "mdns-sd"
 version = "0.13.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1925,6 +1941,28 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a973b4e44ce6cad84ce69d797acf9a044532e4184c4f267913d1b546a0727b7a"
+dependencies = [
+ "num_enum_derive",
+ "rustversion",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77e878c846a8abae00dd069496dbe8751b16ac1c3d6bd2a7283a938e8228f90d"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
 ]
 
 [[package]]
@@ -2189,7 +2227,7 @@ dependencies = [
 [[package]]
 name = "pycrate-rs"
 version = "0.1.0"
-source = "git+https://github.com/wgreenberg/pycrate-rs#9e72e40bee9c3c09205ad871cf681628b443de7c"
+source = "git+https://github.com/EFForg/pycrate-rs#9e72e40bee9c3c09205ad871cf681628b443de7c"
 dependencies = [
  "clap",
  "deku",
@@ -2346,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "rayhunter"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bytes",
  "chrono",
@@ -2356,6 +2394,7 @@ dependencies = [
  "libc",
  "log",
  "nix",
+ "num_enum",
  "pcap-file-tokio",
  "pycrate-rs",
  "serde",
@@ -2365,14 +2404,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "rayhunter-check"
+version = "0.5.0"
+dependencies = [
+ "clap",
+ "futures",
+ "log",
+ "pcap-file-tokio",
+ "rayhunter",
+ "simple_logger",
+ "tokio",
+ "walkdir",
+]
+
+[[package]]
 name = "rayhunter-daemon"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "async_zip",
  "axum",
  "chrono",
- "clap",
  "env_logger 0.11.8",
  "futures",
  "futures-macro",
@@ -2383,7 +2436,6 @@ dependencies = [
  "rayhunter",
  "serde",
  "serde_json",
- "simple_logger",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
@@ -2485,7 +2537,7 @@ checksum = "57397d16646700483b67d2dd6511d79318f9d057fdbd21a4066aeac8b41d310a"
 
 [[package]]
 name = "rootshell"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "nix",
 ]
@@ -2572,6 +2624,15 @@ name = "ryu"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
 
 [[package]]
 name = "scopeguard"
@@ -2858,7 +2919,7 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "telcom-parser"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "asn1-codecs",
  "asn1-compiler",
@@ -3222,6 +3283,16 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "walkdir"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+dependencies = [
+ "same-file",
+ "winapi-util",
+]
 
 [[package]]
 name = "want"

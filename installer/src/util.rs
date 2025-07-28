@@ -4,6 +4,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
+use nusb::Device;
+use reqwest::Client;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::{sleep, timeout};
@@ -104,4 +106,47 @@ pub async fn send_file(admin_ip: &str, local_path: &str, remote_path: &str) -> R
 
     println!("Successfully sent {local_path} to {remote_path}");
     Ok(())
+}
+
+pub async fn http_ok_every(
+    rayhunter_url: String,
+    interval: Duration,
+    max_failures: u32,
+) -> Result<()> {
+    let client = Client::new();
+    let mut failures = 0;
+    loop {
+        match client.get(&rayhunter_url).send().await {
+            Ok(test) => match test.status().is_success() {
+                true => break,
+                false => bail!(
+                    "request for url ({rayhunter_url}) failed with status code: {:?}",
+                    test.status()
+                ),
+            },
+            Err(e) => match failures > max_failures {
+                true => return Err(e.into()),
+                false => failures += 1,
+            },
+        }
+        sleep(interval).await;
+    }
+    Ok(())
+}
+
+/// General function to open a USB device
+pub fn open_usb_device(vid: u16, pid: u16) -> Result<Option<Device>> {
+    let devices = match nusb::list_devices() {
+        Ok(d) => d,
+        Err(_) => return Ok(None),
+    };
+    for device in devices {
+        if device.vendor_id() == vid && device.product_id() == pid {
+            match device.open() {
+                Ok(d) => return Ok(Some(d)),
+                Err(e) => bail!("device found but failed to open: {}", e),
+            }
+        }
+    }
+    Ok(None)
 }

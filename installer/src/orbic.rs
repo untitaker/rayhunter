@@ -4,12 +4,12 @@ use std::time::Duration;
 
 use adb_client::{ADBDeviceExt, ADBUSBDevice, RustADBError};
 use anyhow::{Context, Result, anyhow, bail};
+use nusb::Interface;
 use nusb::transfer::{Control, ControlType, Recipient, RequestBuffer};
-use nusb::{Device, Interface};
 use sha2::{Digest, Sha256};
 use tokio::time::sleep;
 
-use crate::util::echo;
+use crate::util::{echo, open_usb_device};
 use crate::{CONFIG_TOML, RAYHUNTER_DAEMON_INIT};
 
 pub const ORBIC_NOT_FOUND: &str = r#"No Orbic device found.
@@ -91,7 +91,7 @@ async fn setup_rootshell(adb_device: &mut ADBUSBDevice) -> Result<()> {
 }
 
 async fn setup_rayhunter(mut adb_device: ADBUSBDevice) -> Result<ADBUSBDevice> {
-    let rayhunter_daemon_bin = include_bytes!(env!("FILE_RAYHUNTER_DAEMON_ORBIC"));
+    let rayhunter_daemon_bin = include_bytes!(env!("FILE_RAYHUNTER_DAEMON"));
 
     adb_at_syscmd(&mut adb_device, "mkdir -p /data/rayhunter").await?;
     install_file(
@@ -103,7 +103,9 @@ async fn setup_rayhunter(mut adb_device: ADBUSBDevice) -> Result<ADBUSBDevice> {
     install_file(
         &mut adb_device,
         "/data/rayhunter/config.toml",
-        CONFIG_TOML.as_bytes(),
+        CONFIG_TOML
+            .replace("#device = \"orbic\"", "device = \"orbic\"")
+            .as_bytes(),
     )
     .await?;
     install_file(
@@ -136,7 +138,8 @@ async fn setup_rayhunter(mut adb_device: ADBUSBDevice) -> Result<ADBUSBDevice> {
     get_adb().await
 }
 
-async fn test_rayhunter(adb_device: &mut ADBUSBDevice) -> Result<()> {
+/// Test rayhunter on the device over adb without forwarding.
+pub async fn test_rayhunter(adb_device: &mut ADBUSBDevice) -> Result<()> {
     const MAX_FAILURES: u32 = 10;
     let mut failures = 0;
     while failures < MAX_FAILURES {
@@ -194,11 +197,11 @@ async fn install_file_impl(
         .stat(dest)
         .context("Failed to stat transfered file")?;
     if file_info.file_size == 0 {
-        bail!("File transfer unseccessful\nFile is empty");
+        bail!("File transfer unsuccessful\nFile is empty");
     }
-    let ouput = adb_command(adb_device, &["sha256sum", dest])?;
-    if !ouput.contains(&file_hash) {
-        bail!("File transfer unseccessful\nBad hash expected {file_hash} got {ouput}");
+    let output = adb_command(adb_device, &["sha256sum", dest])?;
+    if !output.contains(&file_hash) {
+        bail!("File transfer unsuccessful\nBad hash expected {file_hash} got {output}");
     }
     Ok(())
 }
@@ -362,7 +365,7 @@ async fn adb_serial_cmd(adb_device: &mut ADBUSBDevice, command: &str) -> Result<
 
 /// Sends an AT command to the usb device over the serial port
 ///
-/// First establish a USB handle and context by calling `open_orbic(<T>)
+/// First establish a USB handle and context by calling `open_orbic()`
 pub async fn send_serial_cmd(interface: &Interface, command: &str) -> Result<()> {
     let mut data = String::new();
     data.push_str("\r\n");
@@ -468,25 +471,6 @@ pub fn open_orbic() -> Result<Option<Interface>> {
             .detach_and_claim_interface(INTERFACE) // will reattach drivers on release
             .context("detach_and_claim_interface(1) failed")?;
         return Ok(Some(interface));
-    }
-
-    Ok(None)
-}
-
-/// General function to open a USB device
-fn open_usb_device(vid: u16, pid: u16) -> Result<Option<Device>> {
-    let devices = match nusb::list_devices() {
-        Ok(d) => d,
-        Err(_) => return Ok(None),
-    };
-
-    for device in devices {
-        if device.vendor_id() == vid && device.product_id() == pid {
-            match device.open() {
-                Ok(d) => return Ok(Some(d)),
-                Err(e) => bail!("device found but failed to open: {}", e),
-            }
-        }
     }
 
     Ok(None)
