@@ -9,10 +9,10 @@ use crate::{diag::MessagesContainer, gsmtap_parser};
 
 use super::{
     connection_redirect_downgrade::ConnectionRedirect2GDowngradeAnalyzer,
-    imsi_exposed::ImsiExposedAnalyzer, 
-    imsi_requested::ImsiRequestedAnalyzer, incomplete_sib::IncompleteSibAnalyzer,
-    information_element::InformationElement, nas_null_cipher::NasNullCipherAnalyzer,
-    null_cipher::NullCipherAnalyzer, priority_2g_downgrade::LteSib6And7DowngradeAnalyzer,
+    imsi_exposed::ImsiExposedAnalyzer, imsi_requested::ImsiRequestedAnalyzer,
+    incomplete_sib::IncompleteSibAnalyzer, information_element::InformationElement,
+    nas_null_cipher::NasNullCipherAnalyzer, null_cipher::NullCipherAnalyzer,
+    priority_2g_downgrade::LteSib6And7DowngradeAnalyzer,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

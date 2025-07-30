@@ -21,9 +21,7 @@ struct Framebuffer;
 #[async_trait]
 impl GenericFramebuffer for Framebuffer {
     fn dimensions(&self) -> Dimensions {
-        Dimensions {
-            width: 160,
-        }
+        Dimensions { width: 160 }
     }
 
     async fn write_buffer(&mut self, buffer: Vec<(u8, u8, u8)>) {

@@ -16,9 +16,7 @@ struct Framebuffer;
 impl GenericFramebuffer for Framebuffer {
     fn dimensions(&self) -> Dimensions {
         // TODO actually poll for this, maybe w/ fbset?
-        Dimensions {
-            width: 128,
-        }
+        Dimensions { width: 128 }
     }
 
     async fn write_buffer(&mut self, buffer: Vec<(u8, u8, u8)>) {
