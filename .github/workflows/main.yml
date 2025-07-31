@@ -160,7 +160,6 @@ jobs:
   build_rayhunter_check:
     if: needs.files_changed.outputs.daemon_changed != '0'
     needs:
-      - check_and_test
       - files_changed
     permissions:
       contents: read
@@ -204,7 +203,6 @@ jobs:
   build_rootshell:
     if: needs.files_changed.outputs.rootshell_changed != '0'
     needs:
-      - check_and_test
       - files_changed
     runs-on: ubuntu-latest
     permissions:
@@ -226,7 +224,6 @@ jobs:
   build_rayhunter:
     if: needs.files_changed.outputs.daemon_changed != '0'
     needs:
-      - check_and_test
       - files_changed
     permissions:
       contents: read
