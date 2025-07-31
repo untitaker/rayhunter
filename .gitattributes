@@ -4,6 +4,6 @@
 # Using CRLF for the init scripts will make them fail to execute on TP-Link.
 # See https://github.com/EFForg/rayhunter/issues/489
 
-./dist/config.toml.in eol=lf
-./dist/scripts/misc-daemon eol=lf
-./dist/scripts/rayhunter_daemon eol=lf
+dist/config.toml.in eol=lf
+dist/scripts/misc-daemon eol=lf
+dist/scripts/rayhunter_daemon eol=lf
