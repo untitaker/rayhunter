@@ -81,7 +81,7 @@ impl<'de> Deserialize<'de> for EventType {
                 "Low" => Ok(EventType::Low),
                 "Medium" => Ok(EventType::Medium),
                 "High" => Ok(EventType::High),
-                _ => Err(D::Error::custom(format!("unknown EventType: {}", s))),
+                _ => Err(D::Error::custom(format!("unknown EventType: {s}"))),
             },
             EventTypeHelper::Old(old) => match old {
                 OldEventType::Informational => Ok(EventType::Informational),
@@ -89,7 +89,7 @@ impl<'de> Deserialize<'de> for EventType {
                     "Low" => Ok(EventType::Low),
                     "Medium" => Ok(EventType::Medium),
                     "High" => Ok(EventType::High),
-                    _ => Err(D::Error::custom(format!("unknown severity: {}", severity))),
+                    _ => Err(D::Error::custom(format!("unknown severity: {severity}"))),
                 },
             },
         }
