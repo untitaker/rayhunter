@@ -1,4 +1,4 @@
-use crate::analysis::analyzer::{Analyzer, Event, EventType, Severity};
+use crate::analysis::analyzer::{Analyzer, Event, EventType};
 use crate::analysis::information_element::{InformationElement, LteInformationElement};
 use pycrate_rs::nas::NASMessage;
 use pycrate_rs::nas::emm::EMMMessage;
@@ -116,9 +116,7 @@ impl Analyzer for ImsiExposedAnalyzer {
                     };
 
                     Some(Event {
-                        event_type: EventType::QualitativeWarning {
-                            severity: Severity::Medium,
-                        },
+                        event_type: EventType::Medium,
                         message: format!(
                             "IMSI-exposing NAS message detected: {message_type}. This may indicate the presence of an IMSI catcher."
                         ),
