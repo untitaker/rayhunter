@@ -4,7 +4,7 @@ use pycrate_rs::nas::NASMessage;
 use pycrate_rs::nas::emm::EMMMessage;
 use pycrate_rs::nas::generated::emm::emm_security_mode_command::NASSecAlgoCiphAlgo::EPSEncryptionAlgorithmEEA0Null;
 
-use super::analyzer::{Analyzer, Event, EventType, Severity};
+use super::analyzer::{Analyzer, Event, EventType};
 use super::information_element::{InformationElement, LteInformationElement};
 
 pub struct NasNullCipherAnalyzer {
@@ -51,9 +51,7 @@ impl Analyzer for NasNullCipherAnalyzer {
         if let NASMessage::EMMMessage(EMMMessage::EMMSecurityModeCommand(req)) = payload {
             if req.nas_sec_algo.inner.ciph_algo == EPSEncryptionAlgorithmEEA0Null {
                 return Some(Event {
-                    event_type: EventType::QualitativeWarning {
-                        severity: Severity::High,
-                    },
+                    event_type: EventType::High,
                     message: format!(
                         "NAS Security mode command requested null cipher(packet {})",
                         self.packet_num
