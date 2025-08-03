@@ -43,31 +43,63 @@ impl Default for AnalyzerConfig {
 
 pub const REPORT_VERSION: u32 = 2;
 
-/// Qualitative measure of how severe a Warning event type is.
-/// The levels should break down like this:
-///   * Low: if combined with a large number of other Warnings, user should investigate
-///   * Medium: if combined with a few other Warnings, user should investigate
-///   * High: user should investigate
-#[derive(Serialize, Debug, Clone)]
-pub enum Severity {
-    Low,
-    Medium,
-    High,
+/// The severity level of an event.
+///
+/// Informational does not result in any alert on the display.
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EventType {
+    Informational = 0,
+    Low = 1,
+    Medium = 2,
+    High = 3,
 }
 
-/// `QualitativeWarning` events will always be shown to the user in some manner,
-/// while `Informational` ones may be hidden based on user settings.
-#[derive(Serialize, Debug, Clone)]
-#[serde(tag = "type")]
-pub enum EventType {
-    Informational,
-    QualitativeWarning { severity: Severity },
+impl<'de> Deserialize<'de> for EventType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        #[derive(Deserialize)]
+        #[serde(tag = "type")]
+        enum OldEventType {
+            QualitativeWarning { severity: String },
+            Informational,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum EventTypeHelper {
+            New(String),
+            Old(OldEventType),
+        }
+
+        match EventTypeHelper::deserialize(deserializer)? {
+            EventTypeHelper::New(s) => match s.as_str() {
+                "Informational" => Ok(EventType::Informational),
+                "Low" => Ok(EventType::Low),
+                "Medium" => Ok(EventType::Medium),
+                "High" => Ok(EventType::High),
+                _ => Err(D::Error::custom(format!("unknown EventType: {}", s))),
+            },
+            EventTypeHelper::Old(old) => match old {
+                OldEventType::Informational => Ok(EventType::Informational),
+                OldEventType::QualitativeWarning { severity } => match severity.as_str() {
+                    "Low" => Ok(EventType::Low),
+                    "Medium" => Ok(EventType::Medium),
+                    "High" => Ok(EventType::High),
+                    _ => Err(D::Error::custom(format!("unknown severity: {}", severity))),
+                },
+            },
+        }
+    }
 }
 
 /// Events are user-facing signals that can be emitted by an [Analyzer] upon a
 /// message being received. They can be used to signifiy an IC detection
 /// warning, or just to display some relevant information to the user.
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Event {
     pub event_type: EventType,
     pub message: String,
@@ -115,7 +147,7 @@ pub struct ReportMetadata {
     pub report_version: u32,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AnalysisRow {
     pub packet_timestamp: Option<DateTime<FixedOffset>>,
     pub skipped_message_reason: Option<String>,
@@ -128,12 +160,16 @@ impl AnalysisRow {
     }
 
     pub fn contains_warnings(&self) -> bool {
-        for event in self.events.iter().flatten() {
-            if matches!(event.event_type, EventType::QualitativeWarning { .. }) {
-                return true;
-            }
-        }
-        false
+        self.get_max_event_type() != EventType::Informational
+    }
+
+    pub fn get_max_event_type(&self) -> EventType {
+        self.events
+            .iter()
+            .flatten()
+            .map(|event| event.event_type)
+            .max()
+            .unwrap_or(EventType::Informational)
     }
 }
 
@@ -290,5 +326,59 @@ impl Harness {
             rayhunter,
             report_version: REPORT_VERSION,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_analysis_row_deserialize_old_format() {
+        let row: AnalysisRow = serde_json::from_value(json!({
+            "packet_timestamp": "2023-01-01T00:00:00+00:00",
+            "skipped_message_reason": null,
+            "events": [
+                {
+                    "event_type": { "type": "QualitativeWarning", "severity": "High" },
+                    "message": "Test warning"
+                },
+                {
+                    "event_type": { "type": "Informational" },
+                    "message": "Test info"
+                },
+                null
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(row.events[0].as_ref().unwrap().event_type, EventType::High);
+        assert_eq!(
+            row.events[1].as_ref().unwrap().event_type,
+            EventType::Informational
+        );
+        assert!(row.events[2].is_none());
+    }
+
+    #[test]
+    fn test_analysis_row_deserialize_new_format() {
+        let row: AnalysisRow = serde_json::from_value(json!({
+            "packet_timestamp": "2023-01-01T00:00:00+00:00",
+            "skipped_message_reason": null,
+            "events": [
+                { "event_type": "High", "message": "Test warning" },
+                { "event_type": "Informational", "message": "Test info" },
+                null
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(row.events[0].as_ref().unwrap().event_type, EventType::High);
+        assert_eq!(
+            row.events[1].as_ref().unwrap().event_type,
+            EventType::Informational
+        );
+        assert!(row.events[2].is_none());
     }
 }

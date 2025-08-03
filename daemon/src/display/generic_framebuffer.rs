@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use crate::config;
 use crate::display::DisplayState;
+use rayhunter::analysis::analyzer::EventType;
 
 use log::{error, info};
 use tokio::sync::mpsc::Receiver;
@@ -13,6 +14,13 @@ use tokio_util::task::TaskTracker;
 #[derive(Copy, Clone)]
 pub struct Dimensions {
     pub width: u32,
+}
+
+#[derive(Copy, Clone)]
+pub enum LinePattern {
+    Solid,
+    Dashed, // _ _ _ _
+    Dotted, // . . . .
 }
 
 #[allow(dead_code)]
@@ -43,18 +51,36 @@ impl Color {
     }
 }
 
-impl Color {
-    fn from_state(state: DisplayState, colorblind_mode: bool) -> Self {
-        match state {
-            DisplayState::Paused => Color::White,
-            DisplayState::Recording => {
-                if colorblind_mode {
-                    Color::Blue
-                } else {
-                    Color::Green
-                }
+fn display_style_from_state(state: DisplayState, colorblind_mode: bool) -> (Color, LinePattern) {
+    match state {
+        DisplayState::Paused => (Color::White, LinePattern::Solid),
+        DisplayState::Recording => {
+            if colorblind_mode {
+                (Color::Blue, LinePattern::Solid)
+            } else {
+                (Color::Green, LinePattern::Solid)
             }
-            DisplayState::WarningDetected => Color::Red,
+        }
+        DisplayState::WarningDetected { event_type } => {
+            let pattern = match event_type {
+                EventType::Informational => LinePattern::Solid,
+                EventType::Low => LinePattern::Dotted,
+                EventType::Medium => LinePattern::Dashed,
+                EventType::High => LinePattern::Solid,
+            };
+
+            let color = match event_type {
+                EventType::Informational => {
+                    if colorblind_mode {
+                        Color::Blue
+                    } else {
+                        Color::Green
+                    }
+                }
+                _ => Color::Red,
+            };
+
+            (color, pattern)
         }
     }
 }
@@ -66,11 +92,28 @@ pub trait GenericFramebuffer: Send + 'static {
     async fn write_buffer(&mut self, buffer: Vec<(u8, u8, u8)>); // rgb, row-wise, left-to-right, top-to-bottom
 
     async fn draw_line(&mut self, color: Color, height: u32) {
+        self.draw_patterned_line(color, height, LinePattern::Solid)
+            .await
+    }
+
+    async fn draw_patterned_line(&mut self, color: Color, height: u32, pattern: LinePattern) {
         let width = self.dimensions().width;
-        let px_num = height * width;
         let mut buffer = Vec::new();
-        for _ in 0..px_num {
-            buffer.push(color.rgb());
+
+        for _row in 0..height {
+            for col in 0..width {
+                let should_draw = match pattern {
+                    LinePattern::Solid => true,
+                    LinePattern::Dashed => (col / 4) % 2 == 0, // 4 pixels on, 4 pixels off
+                    LinePattern::Dotted => col % 4 == 0,       // 1 pixel on, 3 pixels off
+                };
+
+                if should_draw {
+                    buffer.push(color.rgb());
+                } else {
+                    buffer.push((0, 0, 0)); // Black background
+                }
+            }
         }
 
         self.write_buffer(buffer).await
@@ -90,7 +133,7 @@ pub fn update_ui(
     }
 
     let colorblind_mode = config.colorblind_mode;
-    let mut display_color = Color::from_state(DisplayState::Recording, colorblind_mode);
+    let mut display_style = display_style_from_state(DisplayState::Recording, colorblind_mode);
 
     task_tracker.spawn(async move {
         loop {
@@ -104,7 +147,7 @@ pub fn update_ui(
             }
             match ui_update_rx.try_recv() {
                 Ok(state) => {
-                    display_color = Color::from_state(state, colorblind_mode);
+                    display_style = display_style_from_state(state, colorblind_mode);
                 }
                 Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {}
                 Err(e) => error!("error receiving framebuffer update message: {e}"),
@@ -122,7 +165,8 @@ pub fn update_ui(
                 // unknown value is used
                 _ => {}
             };
-            fb.draw_line(display_color, 2).await;
+            let (color, pattern) = display_style;
+            fb.draw_patterned_line(color, 2, pattern).await;
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }
     });

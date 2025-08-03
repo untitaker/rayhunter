@@ -64,47 +64,19 @@ export type PacketAnalysis = {
     events: Event[];
 };
 
-export type Event = QualitativeWarning | InformationalEvent | null;
-export enum EventType {
-    Informational,
-    Warning,
-}
+export type EventType = 'Informational' | 'Low' | 'Medium' | 'High';
 
-export type QualitativeWarning = {
-    type: EventType.Warning;
-    severity: Severity;
+export type Event = {
+    event_type: EventType;
     message: string;
-};
-
-export enum Severity {
-    Low,
-    Medium,
-    High,
-}
-
-export type InformationalEvent = {
-    type: EventType.Informational;
-    message: string;
-};
+} | null;
 
 function get_event(event_json: any): Event {
-    if (event_json.event_type.type === 'Informational') {
-        return {
-            type: EventType.Informational,
-            message: event_json.message,
-        };
-    } else {
-        return {
-            type: EventType.Warning,
-            severity:
-                event_json.event_type.severity === 'High'
-                    ? Severity.High
-                    : event_json.event_type.severity === 'Medium'
-                      ? Severity.Medium
-                      : Severity.Low,
-            message: event_json.message,
-        };
+    if (!['Informational', 'Low', 'Medium', 'High'].includes(event_json.event_type)) {
+        throw `Invalid/unhandled event type: ${event_json.event_type}`;
     }
+
+    return event_json;
 }
 
 function get_v1_rows(row_jsons: any[]): AnalysisRow[] {
@@ -170,7 +142,7 @@ function get_report_stats(rows: AnalysisRow[]): ReportStatistics {
         } else {
             for (const event of row.events) {
                 if (event !== null) {
-                    if (event.type === EventType.Informational) {
+                    if (event.event_type === 'Informational') {
                         num_informational_logs++;
                     } else {
                         num_warnings++;
