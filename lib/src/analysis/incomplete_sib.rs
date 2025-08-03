@@ -4,7 +4,7 @@ use telcom_parser::lte_rrc::{BCCH_DL_SCH_MessageType, BCCH_DL_SCH_MessageType_c1
 
 use crate::analysis::util::unpack;
 
-use super::analyzer::{Analyzer, Event, EventType, Severity};
+use super::analyzer::{Analyzer, Event, EventType};
 use super::information_element::{InformationElement, LteInformationElement};
 
 pub struct IncompleteSibAnalyzer {
@@ -46,9 +46,7 @@ impl Analyzer for IncompleteSibAnalyzer {
 
         if sib1.scheduling_info_list.0.len() < 2 {
             return Some(Event {
-                event_type: EventType::QualitativeWarning {
-                    severity: Severity::Medium,
-                },
+                event_type: EventType::Medium,
                 message: format!(
                     "SIB1 scheduling info list was malformed (packet {})",
                     self.packet_num

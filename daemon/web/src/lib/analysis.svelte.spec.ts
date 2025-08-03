@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AnalysisRowType, EventType, parse_finished_report, Severity } from './analysis.svelte';
+import { AnalysisRowType, parse_finished_report } from './analysis.svelte';
 import { type NewlineDeliminatedJson } from './ndjson';
 
 const SAMPLE_V1_REPORT_NDJSON: NewlineDeliminatedJson = [
@@ -29,7 +29,7 @@ const SAMPLE_V1_REPORT_NDJSON: NewlineDeliminatedJson = [
                 events: [
                     null,
                     {
-                        event_type: { type: 'QualitativeWarning', severity: 'Low' },
+                        event_type: 'Low',
                         message: 'Something nasty happened',
                     },
                 ],
@@ -62,7 +62,7 @@ const SAMPLE_V2_REPORT_NDJSON: NewlineDeliminatedJson = [
         events: [
             null,
             {
-                event_type: { type: 'QualitativeWarning', severity: 'Low' },
+                event_type: 'Low',
                 message: 'Something nasty happened',
             },
         ],
@@ -94,11 +94,7 @@ describe('analysis report parsing', () => {
             const event = row.events[1];
             const expected_timestamp = new Date('2024-08-19T03:33:54.318Z');
             expect(row.packet_timestamp.getTime()).toEqual(expected_timestamp.getTime());
-            if (event !== null && event.type === EventType.Warning) {
-                expect(event.severity).toEqual(Severity.Low);
-            } else {
-                throw 'wrong event type';
-            }
+            expect(event!.event_type).toEqual('Low');
         } else {
             throw 'wrong row type';
         }
@@ -128,11 +124,7 @@ describe('analysis report parsing', () => {
             const event = row.events[1];
             const expected_timestamp = new Date('2024-08-19T03:33:54.318Z');
             expect(row.packet_timestamp.getTime()).toEqual(expected_timestamp.getTime());
-            if (event !== null && event.type === EventType.Warning) {
-                expect(event.severity).toEqual(Severity.Low);
-            } else {
-                throw 'wrong event type';
-            }
+            expect(event!.event_type).toEqual('Low');
         } else {
             throw 'wrong row type';
         }
