@@ -52,9 +52,7 @@ impl Analyzer for NasNullCipherAnalyzer {
             && req.nas_sec_algo.inner.ciph_algo == EPSEncryptionAlgorithmEEA0Null
         {
             return Some(Event {
-                event_type: EventType::QualitativeWarning {
-                    severity: Severity::High,
-                },
+                event_type: EventType::High,
                 message: format!(
                     "NAS Security mode command requested null cipher(packet {})",
                     self.packet_num

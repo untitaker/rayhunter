@@ -84,7 +84,7 @@ impl Analyzer for ImsiExposedAnalyzer {
         1
     }
 
-    fn get_description(&self) -> Cow<str> {
+    fn get_description(&self) -> Cow<'_, str> {
         "Catches any and all messages that may expose IMSI. Can be quite noisy. \
         Based on the detection logic from the Marlin paper (\"They Know Where You Are: Tracking Mobile \
         Devices Using Cellular Infrastructure\"). Since we don't have traffic of many devices, we \
