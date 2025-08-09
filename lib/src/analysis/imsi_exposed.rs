@@ -76,7 +76,7 @@ impl ImsiExposedAnalyzer {
 }
 
 impl Analyzer for ImsiExposedAnalyzer {
-    fn get_name(&self) -> Cow<str> {
+    fn get_name(&self) -> Cow<'_, str> {
         "IMSI-Exposed Message Detector".into()
     }
 
