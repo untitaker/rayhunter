@@ -47,22 +47,24 @@
                     {#each report.rows as row}
                         {#if row.type === AnalysisRowType.Analysis}
                             {@const parsed_date = new Date(row.packet_timestamp)}
-                            {#each row.events.filter((e) => e !== null) as event, i}
-                                {@const analyzer = analyzers[i]}
-                                {@const event_type_class = {
-                                    Informational: '',
-                                    Low: 'bg-red-200',
-                                    Medium: 'bg-red-400',
-                                    High: 'bg-red-600',
-                                }[event.event_type]}
-                                <tr class="even:bg-gray-200 odd:bg-white">
-                                    <td class="p-2">{date_formatter.format(parsed_date)}</td>
-                                    <td class="p-2">{analyzer.name} v{analyzer.version}</td>
-                                    <td class="p-2">{event.message}</td>
-                                    <td class="p-2 {event_type_class} text-center"
-                                        >{event.event_type}</td
-                                    >
-                                </tr>
+                            {#each row.events as event, analyzerIndex}
+                                {#if event !== null}
+                                    {@const analyzer = analyzers[analyzerIndex]}
+                                    {@const event_type_class = {
+                                        Informational: '',
+                                        Low: 'bg-yellow-200',
+                                        Medium: 'bg-orange-400',
+                                        High: 'bg-red-600',
+                                    }[event.event_type]}
+                                    <tr class="even:bg-gray-200 odd:bg-white">
+                                        <td class="p-2">{date_formatter.format(parsed_date)}</td>
+                                        <td class="p-2">{analyzer.name} v{analyzer.version}</td>
+                                        <td class="p-2">{event.message}</td>
+                                        <td class="p-2 {event_type_class} text-center"
+                                            >{event.event_type}</td
+                                        >
+                                    </tr>
+                                {/if}
                             {/each}
                         {/if}
                     {/each}

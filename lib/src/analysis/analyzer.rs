@@ -9,10 +9,10 @@ use crate::{diag::MessagesContainer, gsmtap_parser};
 
 use super::{
     connection_redirect_downgrade::ConnectionRedirect2GDowngradeAnalyzer,
-    imsi_exposed::ImsiExposedAnalyzer, imsi_requested::ImsiRequestedAnalyzer,
-    incomplete_sib::IncompleteSibAnalyzer, information_element::InformationElement,
-    nas_null_cipher::NasNullCipherAnalyzer, null_cipher::NullCipherAnalyzer,
-    priority_2g_downgrade::LteSib6And7DowngradeAnalyzer,
+    imsi_requested::ImsiRequestedAnalyzer, incomplete_sib::IncompleteSibAnalyzer,
+    information_element::InformationElement, nas_null_cipher::NasNullCipherAnalyzer,
+    null_cipher::NullCipherAnalyzer, priority_2g_downgrade::LteSib6And7DowngradeAnalyzer,
+    test_analyzer::TestAnalyzer,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -25,6 +25,7 @@ pub struct AnalyzerConfig {
     pub imsi_exposed: bool,
     pub nas_null_cipher: bool,
     pub incomplete_sib: bool,
+    pub test_analyzer: bool,
 }
 
 impl Default for AnalyzerConfig {
@@ -37,6 +38,7 @@ impl Default for AnalyzerConfig {
             imsi_exposed: true,
             nas_null_cipher: true,
             incomplete_sib: true,
+            test_analyzer: false,
         }
     }
 }
@@ -132,22 +134,78 @@ pub trait Analyzer {
     fn get_version(&self) -> u32;
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AnalyzerMetadata {
     pub name: String,
     pub description: String,
     pub version: u32,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(default)]
+#[derive(Default)]
 pub struct ReportMetadata {
     pub analyzers: Vec<AnalyzerMetadata>,
     pub rayhunter: RuntimeMetadata,
+
     // anytime the format of the report changes, bump this by 1
+    //
+    // the default is 0. we consider our legacy (unversioned) heuristics to be v0 -- this'll let us
+    // clearly differentiate some known false-positive-results from the pre-versioned era from v1
+    // heuristics
     pub report_version: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl ReportMetadata {
+    /// Normalize the report metadata to the current version
+    pub fn normalize(&mut self) {
+        self.report_version = REPORT_VERSION;
+    }
+}
+
+/// Normalizer for analysis report lines that maintains state internally.
+/// The first line is expected to be ReportMetadata, and subsequent lines
+/// are expected to be AnalysisRow entries.
+pub struct AnalysisLineNormalizer {
+    is_first: bool,
+}
+
+impl Default for AnalysisLineNormalizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AnalysisLineNormalizer {
+    pub fn new() -> Self {
+        Self { is_first: true }
+    }
+
+    /// Normalize a single line from an analysis report.
+    /// Returns the normalized JSON string with a newline appended.
+    pub fn normalize_line(&mut self, line: String) -> String {
+        if self.is_first {
+            self.is_first = false;
+            // the first line is the report metadata. we overwrite the report version there to
+            // latest, because the output of the remaining lines will follow latest versions
+            if let Ok(mut metadata) = serde_json::from_str::<ReportMetadata>(&line) {
+                metadata.normalize();
+                serde_json::to_string(&metadata).unwrap_or(line) + "\n"
+            } else {
+                line + "\n"
+            }
+        } else {
+            // Remaining lines are AnalysisRow, roundtrip them through serde to normalize them.
+            if let Ok(row) = serde_json::from_str::<AnalysisRow>(&line) {
+                serde_json::to_string(&row).unwrap_or(line) + "\n"
+            } else {
+                line + "\n"
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub struct AnalysisRow {
     pub packet_timestamp: Option<DateTime<FixedOffset>>,
     pub skipped_message_reason: Option<String>,
@@ -170,6 +228,71 @@ impl AnalysisRow {
             .map(|event| event.event_type)
             .max()
             .unwrap_or(EventType::Informational)
+    }
+}
+
+impl<'de> Deserialize<'de> for AnalysisRow {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        #[derive(Deserialize)]
+        struct V1AnalysisEntry {
+            timestamp: DateTime<FixedOffset>,
+            events: Vec<Option<Event>>,
+        }
+
+        #[derive(Deserialize)]
+        struct V1Format {
+            timestamp: DateTime<FixedOffset>,
+            skipped_message_reasons: Vec<String>,
+            analysis: Vec<V1AnalysisEntry>,
+        }
+
+        #[derive(Deserialize)]
+        struct V2Format {
+            packet_timestamp: Option<DateTime<FixedOffset>>,
+            skipped_message_reason: Option<String>,
+            events: Vec<Option<Event>>,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum RowFormat {
+            V1(V1Format),
+            V2(V2Format),
+        }
+
+        match RowFormat::deserialize(deserializer)? {
+            RowFormat::V1(v1) => {
+                // For v1 format, we can only deserialize the first non-skipped analysis entry
+                // The caller needs to handle multiple rows differently for v1
+                if let Some(first_analysis) = v1.analysis.first() {
+                    Ok(AnalysisRow {
+                        packet_timestamp: Some(first_analysis.timestamp),
+                        skipped_message_reason: None,
+                        events: first_analysis.events.clone(),
+                    })
+                } else if let Some(first_reason) = v1.skipped_message_reasons.first() {
+                    Ok(AnalysisRow {
+                        packet_timestamp: Some(v1.timestamp),
+                        skipped_message_reason: Some(first_reason.clone()),
+                        events: Vec::new(),
+                    })
+                } else {
+                    Err(D::Error::custom(
+                        "V1 format has no analysis entries or skipped reasons",
+                    ))
+                }
+            }
+            RowFormat::V2(v2) => Ok(AnalysisRow {
+                packet_timestamp: v2.packet_timestamp,
+                skipped_message_reason: v2.skipped_message_reason,
+                events: v2.events,
+            }),
+        }
     }
 }
 
@@ -215,6 +338,10 @@ impl Harness {
 
         if analyzer_config.incomplete_sib {
             harness.add_analyzer(Box::new(IncompleteSibAnalyzer::new()))
+        }
+
+        if analyzer_config.test_analyzer {
+            harness.add_analyzer(Box::new(TestAnalyzer::new()))
         }
 
         harness

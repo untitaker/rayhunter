@@ -104,6 +104,7 @@ jobs:
       contents: read
     steps:
     - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
     - uses: Swatinem/rust-cache@v2
     - name: Check formatting
       run: cargo fmt --all --check
@@ -180,7 +181,7 @@ jobs:
             os: macos-latest
             target: aarch64-apple-darwin
           - name: macos-intel
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
           - name: windows-x86_64
             os: windows-latest
@@ -282,7 +283,7 @@ jobs:
             os: macos-latest
             target: aarch64-apple-darwin
           - name: macos-intel
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
           - name: windows-x86_64
             os: windows-latest
@@ -334,8 +335,13 @@ jobs:
           platform="${{ matrix.platform }}"
           dest="rayhunter-v${{ env.VERSION }}-${{ matrix.platform }}"
           mkdir "$dest"
-          mv installer-$platform/installer* "$dest"/installer
-          cp -r rayhunter-daemon rootshell/rootshell dist/* installer/install.ps1 "$dest"/
+          # Handle installer with proper extension for Windows
+          if [ "$platform" = "windows-x86_64" ]; then
+            mv installer-$platform/installer.exe "$dest"/installer.exe
+          else
+            mv installer-$platform/installer "$dest"/installer
+          fi
+          cp -r rayhunter-check-* rayhunter-daemon rootshell/rootshell dist/* installer/install.ps1 "$dest"/
           zip -r "$dest.zip" "$dest"
           sha256sum "$dest.zip" > "$dest.zip.sha256"
 

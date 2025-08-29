@@ -2,6 +2,7 @@ export interface SystemStats {
     disk_stats: DiskStats;
     memory_stats: MemoryStats;
     runtime_metadata: RuntimeMetadata;
+    battery_status?: BatteryStatus;
 }
 
 export interface RuntimeMetadata {
@@ -23,4 +24,9 @@ export interface MemoryStats {
     total: string;
     used: string;
     free: string;
+}
+
+export interface BatteryStatus {
+    level: number;
+    is_plugged_in: boolean;
 }

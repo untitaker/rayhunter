@@ -1,6 +1,7 @@
 use std::ops::DerefMut;
 use std::pin::pin;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -16,13 +17,14 @@ use tokio::sync::{RwLock, oneshot};
 use tokio_stream::wrappers::LinesStream;
 use tokio_util::task::TaskTracker;
 
-use rayhunter::analysis::analyzer::{AnalysisRow, AnalyzerConfig, EventType};
+use rayhunter::analysis::analyzer::{AnalysisLineNormalizer, AnalyzerConfig, EventType};
 use rayhunter::diag::{DataType, MessagesContainer};
 use rayhunter::diag_device::DiagDevice;
 use rayhunter::qmdl::QmdlWriter;
 
 use crate::analysis::{AnalysisCtrlMessage, AnalysisWriter};
 use crate::display;
+use crate::notifications::Notification;
 use crate::qmdl_store::{RecordingStore, RecordingStoreError};
 use crate::server::ServerState;
 
@@ -43,6 +45,7 @@ pub struct DiagTask {
     ui_update_sender: Sender<display::DisplayState>,
     analysis_sender: Sender<AnalysisCtrlMessage>,
     analyzer_config: AnalyzerConfig,
+    notification_channel: tokio::sync::mpsc::Sender<Notification>,
     state: DiagState,
     max_type_seen: EventType,
 }
@@ -60,11 +63,13 @@ impl DiagTask {
         ui_update_sender: Sender<display::DisplayState>,
         analysis_sender: Sender<AnalysisCtrlMessage>,
         analyzer_config: AnalyzerConfig,
+        notification_channel: tokio::sync::mpsc::Sender<Notification>,
     ) -> Self {
         Self {
             ui_update_sender,
             analysis_sender,
             analyzer_config,
+            notification_channel,
             state: DiagState::Stopped,
             max_type_seen: EventType::Informational,
         }
@@ -198,10 +203,21 @@ impl DiagTask {
                 .await
                 .expect("failed to analyze container");
 
+            if max_type > EventType::Informational {
+                info!("a heuristic triggered on this run!");
+                self.notification_channel
+                    .send(Notification::new(
+                        "heuristic-warning".to_string(),
+                        format!("Rayhunter has detected a {:?} severity event", max_type),
+                        Some(Duration::from_secs(60 * 5)),
+                    ))
+                    .await
+                    .expect("Failed to send to notification channel");
+            }
+
             if max_type > self.max_type_seen {
                 self.max_type_seen = max_type;
                 if self.max_type_seen > EventType::Informational {
-                    info!("a heuristic triggered on this run!");
                     self.ui_update_sender
                         .send(display::DisplayState::WarningDetected {
                             event_type: self.max_type_seen,
@@ -226,10 +242,11 @@ pub fn run_diag_read_thread(
     qmdl_store_lock: Arc<RwLock<RecordingStore>>,
     analysis_sender: Sender<AnalysisCtrlMessage>,
     analyzer_config: AnalyzerConfig,
+    notification_channel: tokio::sync::mpsc::Sender<Notification>,
 ) {
     task_tracker.spawn(async move {
         let mut diag_stream = pin!(dev.as_stream().into_stream());
-        let mut diag_task = DiagTask::new(ui_update_sender, analysis_sender, analyzer_config);
+        let mut diag_task = DiagTask::new(ui_update_sender, analysis_sender, analyzer_config, notification_channel);
         qmdl_file_tx
             .send(DiagDeviceCtrlMessage::StartRecording)
             .await
@@ -423,16 +440,10 @@ pub async fn get_analysis_report(
     let reader = BufReader::new(analysis_file);
     let lines_stream = LinesStream::new(reader.lines());
 
+    let mut normalizer = AnalysisLineNormalizer::new();
     let normalized_stream = lines_stream
         .try_filter(|line| future::ready(!line.is_empty()))
-        .map_ok(|line| {
-            // Try to deserialize as AnalysisRow to trigger normalization
-            if let Ok(row) = serde_json::from_str::<AnalysisRow>(&line) {
-                serde_json::to_string(&row).unwrap_or(line) + "\n"
-            } else {
-                line + "\n"
-            }
-        });
+        .map_ok(move |line| normalizer.normalize_line(line));
 
     let headers = [(CONTENT_TYPE, "application/x-ndjson")];
     let body = Body::from_stream(normalized_stream);

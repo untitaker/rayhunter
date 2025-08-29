@@ -1,9 +1,11 @@
 mod analysis;
+mod battery;
 mod config;
 mod diag;
 mod display;
 mod error;
 mod key_input;
+mod notifications;
 mod pcap;
 mod qmdl_store;
 mod server;
@@ -16,6 +18,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::config::{parse_args, parse_config};
 use crate::diag::run_diag_read_thread;
 use crate::error::RayhunterError;
+use crate::notifications::{NotificationService, run_notification_worker};
 use crate::pcap::get_pcap;
 use crate::qmdl_store::RecordingStore;
 use crate::server::{
@@ -37,6 +40,7 @@ use log::{error, info};
 use qmdl_store::RecordingStoreError;
 use rayhunter::Device;
 use rayhunter::diag_device::DiagDevice;
+use stats::get_log;
 use tokio::net::TcpListener;
 use tokio::select;
 use tokio::sync::mpsc::{self, Sender};
@@ -53,6 +57,7 @@ fn get_router() -> AppRouter {
         .route("/api/zip/{name}", get(get_zip))
         .route("/api/system-stats", get(get_system_stats))
         .route("/api/qmdl-manifest", get(get_qmdl_manifest))
+        .route("/api/log", get(get_log))
         .route("/api/start-recording", post(start_recording))
         .route("/api/stop-recording", post(stop_recording))
         .route("/api/delete-recording/{name}", post(delete_recording))
@@ -189,6 +194,10 @@ fn run_shutdown_thread(
 async fn main() -> Result<(), RayhunterError> {
     env_logger::init();
 
+    rustls_rustcrypto::provider()
+        .install_default()
+        .expect("Couldn't install rustcrypto provider");
+
     let args = parse_args();
 
     loop {
@@ -216,6 +225,9 @@ async fn run_with_config(
     let (analysis_tx, analysis_rx) = mpsc::channel::<AnalysisCtrlMessage>(5);
     let mut maybe_ui_shutdown_tx = None;
     let mut maybe_key_input_shutdown_tx = None;
+
+    let notification_service = NotificationService::new(config.ntfy_url.clone());
+
     if !config.debug_mode {
         let (ui_shutdown_tx, ui_shutdown_rx) = oneshot::channel();
         maybe_ui_shutdown_tx = Some(ui_shutdown_tx);
@@ -237,6 +249,7 @@ async fn run_with_config(
             qmdl_store_lock.clone(),
             analysis_tx.clone(),
             config.analyzers.clone(),
+            notification_service.new_handler(),
         );
         info!("Starting UI");
 
@@ -284,6 +297,7 @@ async fn run_with_config(
         qmdl_store_lock.clone(),
         analysis_tx.clone(),
     );
+    run_notification_worker(&task_tracker, notification_service);
     let state = Arc::new(ServerState {
         config_path: args.config_path.clone(),
         config,
