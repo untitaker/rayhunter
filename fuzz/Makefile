@@ -27,10 +27,19 @@ build:
 	cargo afl build --bin fuzz-afl-main --release
 .PHONY: build
 
-# Run fuzzer with single instance
 fuzz: build
 	cargo afl fuzz -i seeds -o findings ${AFL_TARGET_BIN}
 .PHONY: fuzz
+
+fuzz-main: build
+	cargo afl fuzz -i seeds -o findings -M main ${AFL_TARGET_BIN}
+.PHONY: fuzz-main
+
+# Usage: make fuzz-secondary ID=1
+fuzz-secondary: build
+	@if [ -z "$(ID)" ]; then echo "Error: ID not set. Usage: make fuzz-secondary ID=1"; exit 1; fi
+	cargo afl fuzz -i seeds -o findings -S secondary$(ID) ${AFL_TARGET_BIN}
+.PHONY: fuzz-secondary
 
 # Clean fuzzing artifacts
 clean:

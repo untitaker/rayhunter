@@ -23,6 +23,18 @@ make fuzz  # Run fuzzer with single instance
 
 Crashes will be in `findings/crashes/`.
 
+### Parallel fuzzing
+
+To run multiple fuzzer instances in parallel (in separate terminals):
+
+```bash
+make fuzz-main
+make fuzz-secondary ID=1
+make fuzz-secondary ID=2
+```
+
+All instances share the same `findings/` output directory and sync discoveries.
+
 Clean fuzzing artifacts:
 ```bash
 make clean  # Remove findings/ directory
