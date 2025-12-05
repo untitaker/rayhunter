@@ -20,3 +20,4 @@ path = "src/bin/qmdl-split.rs"
 rayhunter = { path = "../lib" }
 afl = "0.15"
 deku = "0.18"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
