@@ -3,7 +3,7 @@ AFL_TARGET_BIN=../target/release/fuzz-afl-main
 default-seeds.tar.gz:
 	curl -L https://github.com/ZeroChaos-/rayhunter-traces/archive/refs/heads/main.tar.gz > ./default-seeds.tar.gz
 
-default-seeds:
+default-seeds: default-seeds.tar.gz
 	rm -rf seeds default-seeds
 	mkdir -p default-seeds
 	tar -C default-seeds -xvf default-seeds.tar.gz
