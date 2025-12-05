@@ -28,12 +28,8 @@ build:
 .PHONY: build
 
 fuzz: build
-	cargo afl fuzz -i seeds -o findings ${AFL_TARGET_BIN}
-.PHONY: fuzz
-
-fuzz-main: build
 	cargo afl fuzz -i seeds -o findings -M main ${AFL_TARGET_BIN}
-.PHONY: fuzz-main
+.PHONY: fuzz
 
 # Usage: make fuzz-secondary ID=1
 fuzz-secondary: build

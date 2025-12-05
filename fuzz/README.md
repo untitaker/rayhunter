@@ -18,17 +18,17 @@ make build              # Build fuzz target in release mode
 
 Run fuzzer:
 ```bash
-make fuzz  # Run fuzzer with single instance
+make fuzz
 ```
 
 Crashes will be in `findings/crashes/`.
 
 ### Parallel fuzzing
 
-To run multiple fuzzer instances in parallel (in separate terminals):
+To run additional fuzzer instances in parallel (in separate terminals):
 
 ```bash
-make fuzz-main
+make fuzz
 make fuzz-secondary ID=1
 make fuzz-secondary ID=2
 ```
@@ -37,7 +37,7 @@ All instances share the same `findings/` output directory and sync discoveries.
 
 Clean fuzzing artifacts:
 ```bash
-make clean  # Remove findings/ directory
+make clean
 ```
 
 ## Default seeds
