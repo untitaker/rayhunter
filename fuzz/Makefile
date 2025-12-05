@@ -10,14 +10,16 @@ default-seeds: default-seeds.tar.gz
 	mv default-seeds/rayhunter-traces-main/*.qmdl default-seeds/
 	rm -r default-seeds/rayhunter-traces-main
 
-use-default-seeds: default-seeds
-	rm -rf seeds
-	mkdir -p seeds
+use-default-seeds: default-seeds build
+	rm -rf seeds seeds-raw
+	mkdir -p seeds-raw
 	cargo build --release --bin qmdl-split
 	for file in default-seeds/*.qmdl; do \
 		basename=$$(basename "$$file" .qmdl); \
-		QMDL_SPLIT_MAX_MESSAGES=10000 ../target/release/qmdl-split "seeds/$$basename-" < "$$file"; \
+		QMDL_SPLIT_MAX_MESSAGES=10000 ../target/release/qmdl-split "seeds-raw/$$basename-" < "$$file"; \
 	done
+	cargo afl cmin -i seeds-raw -o seeds -T 8 -m none ${AFL_TARGET_BIN}
+	rm -rf seeds-raw
 .PHONY: use-default-seeds
 
 # Build the fuzz target in release mode
