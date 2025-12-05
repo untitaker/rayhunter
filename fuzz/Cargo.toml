@@ -1,0 +1,22 @@
+[package]
+name = "fuzz"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "fuzz-afl-main"
+path = "src/bin/fuzz-afl-main.rs"
+
+[[bin]]
+name = "fuzz-main"
+path = "src/bin/fuzz-main.rs"
+
+[[bin]]
+name = "qmdl-split"
+path = "src/bin/qmdl-split.rs"
+
+[dependencies]
+rayhunter = { path = "../lib" }
+afl = "0.15"
+deku = "0.18"

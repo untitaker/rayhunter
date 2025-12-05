@@ -1,0 +1,5 @@
+# AFL fuzzing artifacts
+findings/
+seeds/
+default-seeds.tar.gz
+default-seeds/
