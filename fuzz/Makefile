@@ -16,7 +16,7 @@ use-default-seeds: default-seeds build
 	cargo build --release --bin qmdl-split
 	for file in default-seeds/*.qmdl; do \
 		basename=$$(basename "$$file" .qmdl); \
-		QMDL_SPLIT_MAX_MESSAGES=10000 ../target/release/qmdl-split "seeds-raw/$$basename-" < "$$file"; \
+		QMDL_SPLIT_MAX_MESSAGES=300000 ../target/release/qmdl-split "seeds-raw/$$basename-" < "$$file"; \
 	done
 	cargo afl cmin -i seeds-raw -o seeds -T 8 -m none ${AFL_TARGET_BIN}
 	rm -rf seeds-raw
