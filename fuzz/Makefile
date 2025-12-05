@@ -15,7 +15,7 @@ use-default-seeds: default-seeds
 	mkdir -p seeds
 	for file in default-seeds/*.qmdl; do \
 		basename=$$(basename "$$file" .qmdl); \
-		cargo run --release --bin qmdl-split "seeds/$$basename-" < "$$file"; \
+		QMDL_SPLIT_MAX_MESSAGES=10000 cargo run --release --bin qmdl-split "seeds/$$basename-" < "$$file"; \
 	done
 .PHONY: use-default-seeds
 
