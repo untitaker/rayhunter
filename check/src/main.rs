@@ -216,6 +216,8 @@ async fn main() {
             // TODO: if we've already analyzed a QMDL, skip its corresponding pcap
             info!("**** Beginning analysis of {name_str}");
             analyze_pcap(path_str, args.show_skipped).await;
+        } else {
+            warn!("**** Skipping file {name_str} due to wrong file extension");
         }
     }
 }

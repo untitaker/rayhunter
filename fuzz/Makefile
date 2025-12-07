@@ -1,3 +1,5 @@
+export AFL_MAP_SIZE := 163104
+
 AFL_TARGET_BIN=../target/release/fuzz-afl-main
 # Download some default seeds from the internet
 default-seeds.tar.gz:
