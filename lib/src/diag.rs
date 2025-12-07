@@ -5,7 +5,7 @@ use crc::{Algorithm, Crc};
 use deku::prelude::*;
 
 use crate::hdlc::{self, hdlc_decapsulate};
-use log::warn;
+use log::{error, warn};
 use thiserror::Error;
 
 pub const MESSAGE_TERMINATOR: u8 = 0x7e;
@@ -141,7 +141,6 @@ pub enum Message {
     // pass those opcodes down to their respective parsers.
     #[deku(id_pat = "_")]
     Response {
-        id: u8,
         opcode: u32,
         subopcode: u32,
         status: u32,
@@ -190,8 +189,7 @@ pub enum LogBody {
     // * 0xb0ed: plain EMM NAS message (outgoing)
     #[deku(id_pat = "0xb0e2 | 0xb0e3 | 0xb0ec | 0xb0ed")]
     Nas4GMessage {
-        log_type: u16,
-        #[deku(ctx = "*log_type")]
+        #[deku(ctx = "log_type")]
         direction: Nas4GMessageDirection,
         ext_header_version: u8,
         rrc_rel: u8,
@@ -621,6 +619,7 @@ mod test {
         // Regression test: inner_length < 12 previously caused panic.
         // Fixed by using saturating_sub in Message::Log body length calculation.
         let fuzz_data = b"\x10\x00\x00\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+        // Should not panic - saturating_sub prevents underflow
         let _ = Message::from_bytes((fuzz_data, 0));
     }
 
@@ -628,8 +627,8 @@ mod test {
     fn test_fuzz_crash_nas_hdr_len_underflow() {
         // Regression test: hdr_len < 4 previously caused panic in Nas4GMessage.
         // Fixed by using saturating_sub for msg length calculation.
-        let nas_msg =
-            b"\x10\x00\x14\x00\x02\x00\xe2\xb0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00";
+        let nas_msg = b"\x10\x00\x14\x00\x02\x00\xe2\xb0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00";
+        // Should not panic - saturating_sub prevents underflow
         let _ = Message::from_bytes((nas_msg, 0));
     }
 
@@ -638,6 +637,7 @@ mod test {
         // Regression test: hdr_len < 8 previously caused panic in IpTraffic.
         // Fixed by using saturating_sub for msg length calculation.
         let ip_msg = b"\x10\x00\x14\x00\x02\x00\xeb\x11\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00";
+        // Should not panic - saturating_sub prevents underflow
         let _ = Message::from_bytes((ip_msg, 0));
     }
 }
