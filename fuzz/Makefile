@@ -1,6 +1,9 @@
 export AFL_MAP_SIZE := 163104
 
-AFL_TARGET_BIN=../target/release/fuzz-afl-main
+# Allow overriding the target binary (default: fuzz-afl-main)
+TARGET ?= fuzz-afl-main
+AFL_TARGET_BIN=../target/release/$(TARGET)
+
 # Download some default seeds from the internet
 default-seeds.tar.gz:
 	curl -L https://github.com/ZeroChaos-/rayhunter-traces/archive/refs/heads/main.tar.gz > ./default-seeds.tar.gz
@@ -26,7 +29,7 @@ use-default-seeds: default-seeds build
 
 # Build the fuzz target in release mode
 build:
-	cargo afl build --bin fuzz-afl-main --release
+	cargo afl build --bin $(TARGET) --release
 .PHONY: build
 
 fuzz: build

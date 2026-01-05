@@ -100,3 +100,150 @@ where
         }
     }
 }
+
+/// Compare two Message results semantically (ignoring structural differences from deku upgrade)
+fn messages_equal(
+    new: &rayhunter::diag::Message,
+    old: &rayhunter_old::diag::Message,
+) -> bool {
+    use rayhunter::diag::Message as New;
+    use rayhunter_old::diag::Message as Old;
+
+    match (new, old) {
+        (
+            New::Log {
+                pending_msgs: pm_new,
+                outer_length: ol_new,
+                inner_length: il_new,
+                log_type: lt_new,
+                timestamp: ts_new,
+                body: body_new,
+            },
+            Old::Log {
+                pending_msgs: pm_old,
+                outer_length: ol_old,
+                inner_length: il_old,
+                log_type: lt_old,
+                timestamp: ts_old,
+                body: body_old,
+            },
+        ) => {
+            pm_new == pm_old
+                && ol_new == ol_old
+                && il_new == il_old
+                && lt_new == lt_old
+                && ts_new.ts == ts_old.ts
+                && log_bodies_equal(body_new, body_old)
+        }
+        (
+            New::Response {
+                id: _,
+                opcode: op_new,
+                subopcode: sub_new,
+                status: st_new,
+                payload: pay_new,
+            },
+            Old::Response {
+                opcode: op_old,
+                subopcode: sub_old,
+                status: st_old,
+                payload: pay_old,
+            },
+        ) => {
+            op_new == op_old
+                && sub_new == sub_old
+                && st_new == st_old
+                && format!("{:?}", pay_new) == format!("{:?}", pay_old)
+        }
+        _ => false,
+    }
+}
+
+/// Compare LogBody variants semantically
+fn log_bodies_equal(
+    new: &rayhunter::diag::LogBody,
+    old: &rayhunter_old::diag::LogBody,
+) -> bool {
+    use rayhunter::diag::LogBody as New;
+    use rayhunter_old::diag::LogBody as Old;
+
+    match (new, old) {
+        (
+            New::Nas4GMessage {
+                log_type: _,
+                direction: dir_new,
+                ext_header_version: ehv_new,
+                rrc_rel: rr_new,
+                rrc_version_minor: rvm_new,
+                rrc_version_major: rvmaj_new,
+                msg: msg_new,
+            },
+            Old::Nas4GMessage {
+                direction: dir_old,
+                ext_header_version: ehv_old,
+                rrc_rel: rr_old,
+                rrc_version_minor: rvm_old,
+                rrc_version_major: rvmaj_old,
+                msg: msg_old,
+            },
+        ) => {
+            format!("{:?}", dir_new) == format!("{:?}", dir_old)
+                && ehv_new == ehv_old
+                && rr_new == rr_old
+                && rvm_new == rvm_old
+                && rvmaj_new == rvmaj_old
+                && msg_new == msg_old
+        }
+        _ => format!("{:?}", new) == format!("{:?}", old),
+    }
+}
+
+/// Differential fuzzing: compare old and new parser outputs
+pub fn fuzz_differential(data: &[u8]) {
+    use deku::DekuContainerRead as DekuNew;
+    use deku_old::DekuContainerRead as DekuOld;
+
+    let result_new = <rayhunter::diag::Message as DekuNew>::from_bytes((data, 0));
+    let result_old = <rayhunter_old::diag::Message as DekuOld>::from_bytes((data, 0));
+
+    match (result_new, result_old) {
+        (Ok(((rest_new, _), msg_new)), Ok(((rest_old, _), msg_old))) => {
+            if rest_new.len() != rest_old.len() {
+                panic!(
+                    "Different remaining bytes!\nInput: {:02x?}\nNew: {} bytes\nOld: {} bytes",
+                    data,
+                    rest_new.len(),
+                    rest_old.len()
+                );
+            }
+            if !messages_equal(&msg_new, &msg_old) {
+                panic!(
+                    "Messages differ!\nInput: {:02x?}\nNew: {:?}\nOld: {:?}",
+                    data, msg_new, msg_old
+                );
+            }
+        }
+        (Ok(_), Err(e_old)) => {
+            panic!(
+                "New parser succeeded but old failed!\nInput: {:02x?}\nOld error: {:?}",
+                data, e_old
+            );
+        }
+        (Err(e_new), Ok(_)) => {
+            panic!(
+                "Old parser succeeded but new failed!\nInput: {:02x?}\nNew error: {:?}",
+                data, e_new
+            );
+        }
+        (Err(e_new), Err(e_old)) => {
+            let new_err = format!("{:?}", e_new);
+            let old_err = format!("{:?}", e_old);
+            if new_err != old_err {
+                panic!(
+                    "Different errors!\nInput: {:02x?}\nNew: {}\nOld: {}",
+                    data, new_err, old_err
+                );
+            }
+        }
+    }
+}

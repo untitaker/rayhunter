@@ -16,8 +16,18 @@ path = "src/bin/fuzz-main.rs"
 name = "qmdl-split"
 path = "src/bin/qmdl-split.rs"
 
+[[bin]]
+name = "fuzz-afl-differential"
+path = "src/bin/fuzz-afl-differential.rs"
+
+[[bin]]
+name = "test-differential"
+path = "src/bin/test-differential.rs"
+
 [dependencies]
 rayhunter = { path = "../lib" }
+rayhunter-old = { package = "rayhunter", git = "https://github.com/EFForg/rayhunter", rev = "6179317" }
 afl = "0.15"
-deku = "0.18"
+deku = "0.20"
+deku-old = { package = "deku", version = "0.18" }
 xxhash-rust = { version = "0.8", features = ["xxh3"] }

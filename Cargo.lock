@@ -1939,8 +1939,10 @@ name = "fuzz"
 version = "0.1.0"
 dependencies = [
  "afl",
- "deku",
- "rayhunter",
+ "deku 0.18.1",
+ "deku 0.20.2",
+ "rayhunter 0.8.0",
+ "rayhunter 0.8.0 (git+https://github.com/EFForg/rayhunter?rev=6179317)",
  "xxhash-rust",
 ]
 
@@ -4737,7 +4739,30 @@ dependencies = [
  "pycrate-rs",
  "serde",
  "serde_json",
- "telcom-parser",
+ "telcom-parser 0.8.0",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
+name = "rayhunter"
+version = "0.8.0"
+source = "git+https://github.com/EFForg/rayhunter?rev=6179317#61793179e530815ce71f993c5b1016d93a0a3c6d"
+dependencies = [
+ "bytes",
+ "chrono",
+ "crc",
+ "deku 0.18.1",
+ "futures",
+ "libc",
+ "log",
+ "nix 0.29.0",
+ "num_enum",
+ "pcap-file-tokio",
+ "pycrate-rs",
+ "serde",
+ "serde_json",
+ "telcom-parser 0.8.0 (git+https://github.com/EFForg/rayhunter?rev=6179317)",
  "thiserror 1.0.69",
  "tokio",
 ]
@@ -4750,7 +4775,7 @@ dependencies = [
  "futures",
  "log",
  "pcap-file-tokio",
- "rayhunter",
+ "rayhunter 0.8.0",
  "simple_logger",
  "tokio",
  "walkdir",
@@ -4772,7 +4797,7 @@ dependencies = [
  "include_dir",
  "libc",
  "log",
- "rayhunter",
+ "rayhunter 0.8.0",
  "reqwest",
  "rustls-rustcrypto",
  "serde",
@@ -6016,6 +6041,20 @@ dependencies = [
 [[package]]
 name = "telcom-parser"
 version = "0.8.0"
+dependencies = [
+ "asn1-codecs",
+ "asn1-compiler",
+ "asn1_codecs_derive",
+ "bitvec",
+ "log",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "telcom-parser"
+version = "0.8.0"
+source = "git+https://github.com/EFForg/rayhunter?rev=6179317#61793179e530815ce71f993c5b1016d93a0a3c6d"
 dependencies = [
  "asn1-codecs",
  "asn1-compiler",

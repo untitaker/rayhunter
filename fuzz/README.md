@@ -2,6 +2,15 @@
 
 AFL fuzzing for QMDL/PCAP parsing and analysis. Tests both parsers and all default analyzers against malformed inputs.
 
+## Fuzz Targets
+
+### `fuzz-afl-main` (default)
+Standard fuzzing target that exercises QMDL parsing and all default analyzers.
+
+### `fuzz-afl-differential`
+Differential fuzzing target that compares old (deku 0.18) vs new (deku 0.20) parser implementations.
+Panics on any parsing differences or regressions. Useful for validating parser upgrades.
+
 ## Usage
 
 Install cargo-afl:
@@ -13,12 +22,18 @@ Initialize seed corpus and build:
 ```bash
 make default-seeds      # Download seed corpus from rayhunter-traces
 make use-default-seeds  # Minimize seeds into seeds/ directory
-make build              # Build fuzz target in release mode
+make build              # Build default fuzz target (fuzz-afl-main)
+```
+
+Build a specific target:
+```bash
+make TARGET=fuzz-afl-differential build
 ```
 
 Run fuzzer:
 ```bash
-make fuzz
+make fuzz                              # Run default target
+make TARGET=fuzz-afl-differential fuzz # Run differential fuzzer
 ```
 
 Crashes will be in `findings/crashes/`.
