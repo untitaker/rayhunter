@@ -141,7 +141,7 @@ pub enum Message {
     // pass those opcodes down to their respective parsers.
     #[deku(id_pat = "_")]
     Response {
-        opcode1: u8,  // the "id" (from deku's POV) gets parsed into this field
+        opcode1: u8, // the "id" (from deku's POV) gets parsed into this field
         opcode2: u8,
         opcode3: u8,
         opcode4: u8,
@@ -686,7 +686,7 @@ mod test {
                     opcode3: 0x00,
                     opcode4: 0x00,
                     subopcode: 3,
-                    status: 2968256522,  // [0x0a, 0x00, 0xec, 0xb0] in LE
+                    status: 2968256522, // [0x0a, 0x00, 0xec, 0xb0] in LE
                     payload: ResponsePayload::LogConfig(LogConfigResponse::SetMask),
                 }
             ),
