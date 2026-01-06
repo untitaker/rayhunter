@@ -137,8 +137,10 @@ fn messages_equal(
         }
         (
             New::Response {
-                id: _,
-                opcode: op_new,
+                opcode1,
+                opcode2,
+                opcode3,
+                opcode4,
                 subopcode: sub_new,
                 status: st_new,
                 payload: pay_new,
@@ -150,7 +152,7 @@ fn messages_equal(
                 payload: pay_old,
             },
         ) => {
-            op_new == op_old
+            u32::from_le_bytes([*opcode1, *opcode2, *opcode3, *opcode4]) == *op_old
                 && sub_new == sub_old
                 && st_new == st_old
                 && format!("{:?}", pay_new) == format!("{:?}", pay_old)
