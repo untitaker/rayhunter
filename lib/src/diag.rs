@@ -627,30 +627,30 @@ mod test {
 
     #[test]
     fn test_fuzz_crash_nas_hdr_len_underflow() {
-        // Regression test: hdr_len < 4 previously caused panic in Nas4GMessage.
-        // Fixed by using saturating_sub for msg length calculation.
-        // Also tests deku 0.20 upgrade: log_type discriminant field uses
-        // #[deku(skip, default = "log_type")] to avoid double-read (issue sharksforarms/deku#305).
+        // Regression test for two things:
+        // - hdr_len < 4 previously caused panic in Nas4GMessage.
+        // - Upgrading to deku 0.20 caused incorrect parsing behavior (double-read of discriminant)
         let nas_msg =
             b"\x10\x00\x14\x00\x02\x00\xe2\xb0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00";
-        let result = Message::from_bytes((nas_msg, 0));
 
-        assert!(result.is_ok());
-        let ((rest, _), msg) = result.unwrap();
+        let ((rest, _), msg) = Message::from_bytes((nas_msg, 0)).unwrap();
+
         assert_eq!(rest.len(), 0);
-
-        match msg {
-            Message::Log { log_type, body, .. } => {
-                assert_eq!(log_type, 0xb0e2);
-                match body {
-                    LogBody::Nas4GMessage { direction, .. } => {
-                        assert_eq!(direction, Nas4GMessageDirection::Downlink);
-                    }
-                    _ => panic!("Expected Nas4GMessage, got {:?}", body),
+        assert!(
+            matches!(
+                msg,
+                Message::Log {
+                    log_type: 0xb0e2,
+                    body: LogBody::Nas4GMessage {
+                        direction: Nas4GMessageDirection::Downlink,
+                        ..
+                    },
+                    ..
                 }
-            }
-            _ => panic!("Expected Log message, got {:?}", msg),
-        }
+            ),
+            "Unexpected message: {:?}",
+            msg
+        );
     }
 
     #[test]
